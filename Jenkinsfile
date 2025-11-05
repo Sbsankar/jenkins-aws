@@ -4,7 +4,7 @@ pipeline {
     // Define environment variables if needed
     environment {
         // Your SES verified email address for receiving notifications
-        EMAIL_RECIPIENT = 'sbsankar215414@gmail.com' 
+        EMAIL_RECIPIENT = 'sivabalasankar2002@gmail.com' 
     }
 
     stages {
