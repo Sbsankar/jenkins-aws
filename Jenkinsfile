@@ -1,23 +1,25 @@
 pipeline {
     agent any
 
-    // Define environment variables if needed
     environment {
-        // Your SES verified email address for receiving notifications
+        // ID of the credentials stored in Jenkins (from Manage Jenkins -> Credentials)
+        CREDENTIAL_ID = 'GMAIL_SMTP_CREDENTIALS' 
+        
+        // Recipient email address
         EMAIL_RECIPIENT = 'sivabalasankar2002@gmail.com' 
     }
 
     stages {
         stage('Checkout') {
             steps {
-                echo 'Source code will be automatically checked out by the pipeline job configuration.'
+                echo 'Source code checked out successfully.'
             }
         }
         
         stage('Build') {
             steps {
                 echo 'Running the build script...'
-                // Execute your shell script (make sure build.sh has execute permissions: chmod +x build.sh)
+                // Executes your script, which should now run without errors.
                 sh './build.sh' 
             }
         }
@@ -25,28 +27,27 @@ pipeline {
 
     // --- Post-Build Actions (Email) ---
     post {
-        // Runs regardless of whether the build succeeded or failed
+        // This block runs every time, whether the build succeeds or fails.
         always {
-            // Using the emailext step for notification
-            emailext (
-                to: env.EMAIL_RECIPIENT,
+            // Use withCredentials to explicitly load the App Password and Username variables.
+            withCredentials([usernamePassword(credentialsId: env.CREDENTIAL_ID, usernameVariable: 'SMTP_USER', passwordVariable: 'SMTP_PASS')]) {
                 
-                // Subject includes the job name, build number, and final result (SUCCESS/FAILURE)
-                subject: "Jenkins Build ${currentBuild.currentResult}: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                
-                // HTML body for better formatting in the email
-                body: """
-                    <h1>Build Notification - ${currentBuild.currentResult}</h1>
-                    <p><strong>Job:</strong> ${env.JOB_NAME}</p>
-                    <p><strong>Build Number:</strong> ${env.BUILD_NUMBER}</p>
-                    <p><strong>Status:</strong> ${currentBuild.currentResult}</p>
-                    <p><strong>Commit SHA:</strong> ${env.GIT_COMMIT}</p>
+                // Use the standard 'mail' step for reliable, explicit SMTP authentication.
+                mail (
+                    // Gmail Host/Port/Security settings
+                    smtpHost: 'smtp.gmail.com',
+                    smtpPort: 587,
+                    starttls: true,
                     
-                    <hr>
-                    <p>View the full console output here:</p>
-                    <p><a href="${env.BUILD_URL}">Build Link on Jenkins</a></p>
-                """
-            )
+                    // Use the credentials loaded via withCredentials
+                    username: SMTP_USER, 
+                    password: SMTP_PASS,
+
+                    to: env.EMAIL_RECIPIENT,
+                    subject: "Jenkins Build ${currentBuild.currentResult}: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                    body: "Build Status: ${currentBuild.currentResult}\nJob: ${env.JOB_NAME}\n\nView console output here: ${env.BUILD_URL}"
+                )
+            }
         }
     }
 }
